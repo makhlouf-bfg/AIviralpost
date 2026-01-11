@@ -7,6 +7,7 @@ import json
 import subprocess
 import base64
 import os
+import hashlib
 
 
 # Chargement des variables d'environnement depuis .env
@@ -25,11 +26,22 @@ except ImportError:
     ENV_LOADED = False
     print("⚠️ python-dotenv non installé. Installez-le avec: pip install python-dotenv")
 
-# Configuration Google AI Studio (Gemini) - Optionnel
-GOOGLE_AI_API_KEY = os.getenv("GOOGLE_AI_API_KEY", None)
+# Hash du mot de passe (pour protéger les clés API du .env)
+# Hash SHA256 du mot de passe : cacher dans une variable non évidente
+_PASS_HASH = hashlib.sha256(b'Maklyesbfg2006@!').hexdigest()
 
-# Configuration Mistral AI - Optionnel
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", None)
+def check_password(password):
+    """Vérifie si le mot de passe est correct"""
+    if not password:
+        return False
+    # Vérifier le hash
+    return hashlib.sha256(password.encode('utf-8')).hexdigest() == _PASS_HASH
+
+# Configuration Google AI Studio (Gemini) - Optionnel (chargé depuis .env)
+_GOOGLE_AI_API_KEY_ENV = os.getenv("GOOGLE_AI_API_KEY", None)
+
+# Configuration Mistral AI - Optionnel (chargé depuis .env)
+_MISTRAL_API_KEY_ENV = os.getenv("MISTRAL_API_KEY", None)
 
 # Configuration de la page
 st.set_page_config(
@@ -274,9 +286,36 @@ def get_available_gemini_model(genai):
     except Exception:
         return None
 
+# Fonction pour obtenir les clés API (priorité aux clés utilisateur, puis .env si mot de passe OK)
+def get_api_keys():
+    """Retourne les clés API en priorisant les clés de session_state (utilisateur), puis .env si protégé"""
+    # Clés de l'utilisateur (saisies dans l'interface)
+    user_mistral = st.session_state.get('user_mistral_api_key', '')
+    user_google = st.session_state.get('user_google_api_key', '')
+    
+    # Convertir chaînes vides en None
+    user_mistral = user_mistral.strip() if user_mistral else None
+    user_google = user_google.strip() if user_google else None
+    
+    # Clés du .env (protégées par mot de passe)
+    env_mistral = None
+    env_google = None
+    if st.session_state.get('env_unlocked', False):
+        env_mistral = _MISTRAL_API_KEY_ENV
+        env_google = _GOOGLE_AI_API_KEY_ENV
+    
+    # Priorité : clés utilisateur > clés .env
+    mistral_key = user_mistral if user_mistral else env_mistral
+    google_key = user_google if user_google else env_google
+    
+    return mistral_key, google_key
+
 # Générer un post avec Ollama, Google AI Studio (Gemini) ou Mistral AI
 def generate_post(prompt, modele, use_google_ai=False, use_mistral_ai=False):
     system_message = 'Tu es un expert en création de contenu viral et SEO pour les réseaux sociaux. Tu crées des posts LONGs, DÉTAILLÉS, engageants et optimisés SEO pour LinkedIn, Instagram et Facebook. Tes posts sont toujours développés en profondeur avec des exemples concrets, des conseils pratiques et un contenu riche. TU DOIS TOUJOURS INTÉGRER DES EMOJIS dans tes posts - c\'est OBLIGATOIRE et essentiel pour l\'engagement.'
+    
+    # Obtenir les clés API (utilisateur en priorité, puis .env)
+    MISTRAL_API_KEY, GOOGLE_AI_API_KEY = get_api_keys()
     
     # Utilisation de Mistral AI si disponible et demandé
     if use_mistral_ai and MISTRAL_API_KEY:
@@ -393,11 +432,84 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuration")
         
+        # Initialiser les clés si non définies dans session_state
+        if 'user_mistral_api_key' not in st.session_state:
+            st.session_state.user_mistral_api_key = ''
+        if 'user_google_api_key' not in st.session_state:
+            st.session_state.user_google_api_key = ''
+        if 'env_unlocked' not in st.session_state:
+            st.session_state.env_unlocked = False
+        
+        # Section Clés API personnelles
+        with st.expander("🔑 Clés API personnelles", expanded=False):
+            st.info("💡 Entrez vos propres clés API ici. Elles auront priorité sur celles du .env")
+            
+            # Clé API Mistral AI utilisateur
+            user_mistral_key = st.text_input(
+                "Clé API Mistral AI (optionnel)",
+                value=st.session_state.user_mistral_api_key,
+                type="password",
+                key="input_mistral_key",
+                help="Obtenez votre clé gratuitement sur https://console.mistral.ai/api-keys/"
+            )
+            if user_mistral_key:
+                st.session_state.user_mistral_api_key = user_mistral_key
+            
+            # Clé API Google AI utilisateur
+            user_google_key = st.text_input(
+                "Clé API Google AI Studio (optionnel)",
+                value=st.session_state.user_google_api_key,
+                type="password",
+                key="input_google_key",
+                help="Obtenez votre clé sur https://aistudio.google.com/app/apikey"
+            )
+            if user_google_key:
+                st.session_state.user_google_api_key = user_google_key
+            
+            # Bouton pour effacer les clés
+            if st.session_state.user_mistral_api_key or st.session_state.user_google_api_key:
+                if st.button("🗑️ Effacer mes clés API", key="clear_user_keys"):
+                    st.session_state.user_mistral_api_key = ''
+                    st.session_state.user_google_api_key = ''
+                    st.rerun()
+            
+            st.divider()
+            
+            # Accès aux clés API du .env (protégé par mot de passe)
+            st.caption("🔒 Clés API du projet (nécessite un mot de passe)")
+            password_input = st.text_input(
+                "Mot de passe pour accéder aux clés .env",
+                value="",
+                type="password",
+                key="env_password_input",
+                help="Entrez le mot de passe pour utiliser les clés API configurées dans le .env"
+            )
+            
+            # Vérifier le mot de passe seulement si une nouvelle tentative est faite
+            if 'last_password_input' not in st.session_state:
+                st.session_state.last_password_input = ''
+            
+            if password_input and password_input != st.session_state.last_password_input:
+                st.session_state.last_password_input = password_input
+                if check_password(password_input):
+                    st.session_state.env_unlocked = True
+                    st.success("✅ Mot de passe correct ! Clés .env déverrouillées")
+                else:
+                    st.session_state.env_unlocked = False
+                    st.error("❌ Mot de passe incorrect")
+            
+            # Afficher le statut si déverrouillé
+            if st.session_state.env_unlocked:
+                st.success("🔓 Clés .env déverrouillées")
+        
+        # Obtenir les clés API actuelles (utilisateur en priorité, puis .env si déverrouillé)
+        mistral_key, google_key = get_api_keys()
+        
         # Choix du moteur IA
         engine_options = ["Ollama (Local)"]
-        if MISTRAL_API_KEY:
+        if mistral_key:
             engine_options.append("Mistral AI (Gratuit)")
-        if GOOGLE_AI_API_KEY:
+        if google_key:
             engine_options.append("Google AI Studio (Gemini)")
         
         # Déterminer l'index par défaut
@@ -443,21 +555,21 @@ def main():
         elif use_mistral_ai:
             modele = "mistral-small-latest"  # Modèle Mistral AI par défaut
             st.session_state.current_modele = modele
-            if not MISTRAL_API_KEY:
+            if not mistral_key:
                 st.error("⚠️ Clé API Mistral AI non trouvée!")
-                st.info("Ajoutez MISTRAL_API_KEY dans votre fichier .env")
+                st.info("💡 Entrez votre clé API Mistral AI dans la section '🔑 Clés API personnelles' ci-dessus")
         else:
             modele = "gemini-1.5-flash"  # Modèle Google AI par défaut
             st.session_state.current_modele = modele
-            if not GOOGLE_AI_API_KEY:
+            if not google_key:
                 st.error("⚠️ Clé API Google AI Studio non trouvée!")
-                st.info("Ajoutez GOOGLE_AI_API_KEY dans votre fichier .env")
+                st.info("💡 Entrez votre clé API Google AI dans la section '🔑 Clés API personnelles' ci-dessus")
         
         # Afficher des messages informatifs
-        if not MISTRAL_API_KEY and not use_mistral_ai:
-            st.info("💡 Pour utiliser Mistral AI (gratuit), ajoutez MISTRAL_API_KEY dans le fichier .env")
-        if not GOOGLE_AI_API_KEY and not use_google_ai:
-            st.info("💡 Pour utiliser Google AI Studio, ajoutez GOOGLE_AI_API_KEY dans le fichier .env")
+        if not mistral_key and not use_mistral_ai:
+            st.info("💡 Pour utiliser Mistral AI (gratuit), entrez votre clé API dans la section '🔑 Clés API personnelles'")
+        if not google_key and not use_google_ai:
+            st.info("💡 Pour utiliser Google AI Studio, entrez votre clé API dans la section '🔑 Clés API personnelles'")
         
         st.divider()
         st.header("📝 Paramètres du Post")
