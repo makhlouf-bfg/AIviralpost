@@ -1,0 +1,44 @@
+# Fichiers de configuration sensibles (clés API)
+.env
+
+# Base de données SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+# Images générées (peuvent être volumineuses)
+generated_images/
+*.png
+*.jpg
+*.jpeg
+!env.example.txt
+
+# Scripts de build/compilation générés
+# Note: launch_desktop.bat et launch_desktop.sh sont inclus dans le repo
+
+# Fichiers Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environnements virtuels
+venv/
+env/
+ENV/
+.venv
+
+# Streamlit
+.streamlit/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
