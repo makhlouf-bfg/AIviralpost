@@ -5,8 +5,10 @@ from http.server import BaseHTTPRequestHandler
 
 SYSTEM_MESSAGE = (
     "Tu es un expert en création de contenu viral et SEO pour les réseaux sociaux. "
-    "Tu crées des posts LONGs, DÉTAILLÉS, engageants et optimisés SEO pour LinkedIn, Instagram et Facebook. "
-    "TU DOIS TOUJOURS INTÉGRER DES EMOJIS dans tes posts - c'est OBLIGATOIRE."
+    "Tu crées des posts pour LinkedIn, Instagram et Facebook. "
+    "RÈGLE ABSOLUE : tu dois respecter À LA LETTRE les instructions du client : "
+    "nombre d'emojis (aucun / peu / beaucoup), consignes supplémentaires, ton, longueur. "
+    "Ne jamais ajouter d'emojis si le client demande aucun emoji. Ne jamais ignorer une consigne explicite."
 )
 
 def _norm_tone(ton):
@@ -15,38 +17,62 @@ def _norm_tone(ton):
         return "professionnel"
     return t
 
-def get_linkedin_prompt(sujet, ton, audience):
+def _emoji_rule(emoji_level):
+    level = (emoji_level or "many").lower().strip()
+    if level == "none" or level == "aucun" or level == "0":
+        return "EMOJIS : N'utilise AUCUN emoji dans le post. Aucune exception."
+    if level == "few" or level == "peu" or level == "little":
+        return "EMOJIS : Utilise uniquement 3 à 5 emojis au maximum, placés avec parcimonie."
+    return "EMOJIS : Utilise beaucoup d'emojis (15 à 25 selon le réseau), répartis dans tout le texte."
+
+def get_linkedin_prompt(sujet, ton, audience, emoji_rule, custom_instructions):
     ton_fr = {"professionnel": "professionnel et sérieux", "humoristique": "humoristique et engageant", "provocateur": "provocateur et percutant"}[_norm_tone(ton)]
-    return f"""Crée un post LinkedIn professionnel LONG et DÉTAILLÉ (minimum 250-300 mots) optimisé pour le SEO avec la structure AIDA.
+    base = f"""Crée un post LinkedIn professionnel LONG et DÉTAILLÉ (minimum 250-300 mots) optimisé SEO, structure AIDA.
 Sujet: {sujet}
 Ton: {ton_fr}
 Audience cible: {audience}
-STRUCTURE: accroche forte, corps détaillé (AIDA), 5-8 hashtags à la fin. Utilise 8-12 emojis. RÉPONSE: le post complet uniquement, sans explications."""
+STRUCTURE: accroche forte, corps détaillé (AIDA), 5-8 hashtags à la fin.
+{emoji_rule}
+RÉPONSE: le post complet uniquement, sans explications ni métatexte."""
+    if custom_instructions:
+        base += f"\n\nINSTRUCTIONS OBLIGATOIRES DU CLIENT (à respecter à la lettre):\n{custom_instructions}"
+    return base
 
-def get_instagram_prompt(sujet, ton, audience):
+def get_instagram_prompt(sujet, ton, audience, emoji_rule, custom_instructions):
     ton_fr = {"professionnel": "professionnel", "humoristique": "décontracté et humoristique", "provocateur": "audacieux et provocateur"}[_norm_tone(ton)]
-    return f"""Crée un post Instagram LONG (minimum 200-250 mots) captivant, visuel et optimisé SEO.
+    base = f"""Crée un post Instagram LONG (minimum 200-250 mots) captivant, visuel et optimisé SEO.
 Sujet: {sujet}
 Ton: {ton_fr}
 Audience cible: {audience}
-Utilise 20-25 emojis, bloc de hashtags à la fin. RÉPONSE: le post complet uniquement."""
+Bloc de hashtags à la fin.
+{emoji_rule}
+RÉPONSE: le post complet uniquement."""
+    if custom_instructions:
+        base += f"\n\nINSTRUCTIONS OBLIGATOIRES DU CLIENT (à respecter à la lettre):\n{custom_instructions}"
+    return base
 
-def get_facebook_prompt(sujet, ton, audience):
+def get_facebook_prompt(sujet, ton, audience, emoji_rule, custom_instructions):
     ton_fr = {"professionnel": "amical et professionnel", "humoristique": "décontracté et humoristique", "provocateur": "audacieux et engageant"}[_norm_tone(ton)]
-    return f"""Crée un post Facebook LONG (minimum 200-250 mots) communautaire qui encourage l'interaction.
+    base = f"""Crée un post Facebook LONG (minimum 200-250 mots) communautaire qui encourage l'interaction.
 Sujet: {sujet}
 Ton: {ton_fr}
 Audience cible: {audience}
-Pose 3-4 questions à la fin, 10-15 emojis. RÉPONSE: le post complet uniquement."""
+Pose 3-4 questions à la fin pour encourager les commentaires.
+{emoji_rule}
+RÉPONSE: le post complet uniquement."""
+    if custom_instructions:
+        base += f"\n\nINSTRUCTIONS OBLIGATOIRES DU CLIENT (à respecter à la lettre):\n{custom_instructions}"
+    return base
 
-def build_prompt(network, subject, tone, audience):
+def build_prompt(network, subject, tone, audience, emoji_level, custom_instructions):
     prompts = {
         "linkedin": get_linkedin_prompt,
         "instagram": get_instagram_prompt,
         "facebook": get_facebook_prompt,
     }
     fn = prompts.get(network.lower(), get_linkedin_prompt)
-    return fn(subject or "", tone or "professionnel", audience or "")
+    emoji_rule = _emoji_rule(emoji_level)
+    return fn(subject or "", tone or "professionnel", audience or "", emoji_rule, (custom_instructions or "").strip())
 
 def generate_with_mistral(prompt, api_key):
     from mistralai import Mistral
@@ -117,6 +143,8 @@ class handler(BaseHTTPRequestHandler):
             audience = data.get("audience", "")
             network = data.get("network", "linkedin")
             engine = data.get("engine", "google")
+            emoji_level = data.get("emoji_level", "many")
+            custom_instructions = data.get("custom_instructions", "")
 
             # Only use server-side keys (your Vercel env vars). Client never sends keys.
             api_key_google = os.environ.get("GOOGLE_AI_API_KEY")
@@ -130,7 +158,7 @@ class handler(BaseHTTPRequestHandler):
                 send_json(self, 503, {"error": "Service non configuré. L’administrateur doit définir GOOGLE_AI_API_KEY ou MISTRAL_API_KEY sur le serveur."})
                 return
 
-            prompt = build_prompt(network, subject, tone, audience)
+            prompt = build_prompt(network, subject, tone, audience, emoji_level, custom_instructions)
             content = generate_post(engine, prompt, api_key_google, api_key_mistral)
 
             if content is None:
