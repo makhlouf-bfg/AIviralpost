@@ -9,7 +9,8 @@ SYSTEM_MESSAGE = (
     "Tu crées des posts pour LinkedIn, Instagram et Facebook. "
     "RÈGLE ABSOLUE : tu dois respecter À LA LETTRE les instructions du client : "
     "nombre d'emojis (aucun / peu / beaucoup), consignes supplémentaires, ton, longueur. "
-    "Ne jamais ajouter d'emojis si le client demande aucun emoji. Ne jamais ignorer une consigne explicite. "
+    "AUCUN emoji = n'en mets pas. PEU (3-5) = tu DOIS en mettre entre 3 et 5, jamais 0. BEAUCOUP = 15-25. "
+    "Ne jamais ignorer une consigne explicite. "
     "FORMAT DE RÉPONSE : texte brut uniquement. Interdit d'utiliser des astérisques (*), du markdown (**gras**), "
     "des séparateurs décoratifs (***** ou -----), ou tout formatage. Uniquement du texte lisible et des emojis si demandé."
 )
@@ -25,7 +26,10 @@ def _emoji_rule(emoji_level):
     if level == "none" or level == "aucun" or level == "0":
         return "EMOJIS : N'utilise AUCUN emoji dans le post. Aucune exception."
     if level == "few" or level == "peu" or level == "little":
-        return "EMOJIS : Utilise uniquement 3 à 5 emojis au maximum, placés avec parcimonie."
+        return (
+            "EMOJIS (OBLIGATOIRE) : Le post DOIT contenir entre 3 et 5 emojis, pas 0. "
+            "Place exactement 3, 4 ou 5 emojis dans le texte (ex. 💡 🚀 ✅), avec parcimonie. Pas moins que 3."
+        )
     return "EMOJIS : Utilise beaucoup d'emojis (15 à 25 selon le réseau), répartis dans tout le texte."
 
 def get_linkedin_prompt(sujet, ton, audience, emoji_rule, custom_instructions):
