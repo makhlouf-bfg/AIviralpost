@@ -83,9 +83,13 @@ source venv/bin/activate
 
 ### 3. Installer les dépendances
 
+Pour l’app **Streamlit en local** (et le mode desktop) :
+
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-local.txt
 ```
+
+*(Le fichier `requirements.txt` à la racine ne contient que les dépendances de l’API Vercel.)*
 
 ### 4. Installer Ollama (optionnel mais recommandé)
 
@@ -257,7 +261,8 @@ viralpost-ai/
 │   └── index.html         # Interface web pour Vercel
 ├── vercel.json            # Config Vercel (rewrites, timeout)
 │
-├── requirements.txt       # Dépendances Python
+├── requirements.txt       # Dépendances minimales (API / Vercel)
+├── requirements-local.txt # Dépendances complètes (Streamlit local)
 ├── env.example.txt        # Exemple de configuration (.env)
 ├── .streamlit/
 │   └── config.toml        # Config Streamlit (thème, serveur)
@@ -329,7 +334,7 @@ viralpost-ai/
 ### Problème : Streamlit ne démarre pas
 
 **Solution** :
-1. Vérifiez que toutes les dépendances sont installées : `pip install -r requirements.txt`
+1. Vérifiez que toutes les dépendances sont installées : `pip install -r requirements-local.txt`
 2. Vérifiez que Python 3.8+ est installé : `python --version`
 3. Essayez de réinstaller Streamlit : `pip install --upgrade streamlit`
 

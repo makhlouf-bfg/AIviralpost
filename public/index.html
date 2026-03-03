@@ -3,43 +3,276 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ViralPost AI</title>
+  <title>ViralPost AI — Posts LinkedIn, Instagram, Facebook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    :root { --primary: #1DA1F2; --primary-dark: #0d8bd9; --bg: #f8f9fa; --card: #fff; --text: #262730; }
+    :root {
+      --primary: #0ea5e9;
+      --primary-hover: #0284c7;
+      --primary-light: #e0f2fe;
+      --bg: #f1f5f9;
+      --bg-card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #059669;
+      --error-bg: #fef2f2;
+      --error-text: #b91c1c;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.06);
+      --shadow-lg: 0 10px 40px -10px rgba(0,0,0,.12);
+    }
+
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); min-height: 100vh; }
-    .header { text-align: center; padding: 2rem 1rem; }
-    .header h1 { font-size: 2.5rem; color: var(--primary); margin: 0; }
-    .container { max-width: 720px; margin: 0 auto; padding: 0 1rem 2rem; }
-    .card { background: var(--card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-left: 4px solid var(--primary); }
-    label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
-    input, select, textarea { width: 100%; padding: 0.6rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin-bottom: 1rem; }
-    textarea { min-height: 80px; resize: vertical; }
-    button { background: var(--primary); color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; width: 100%; }
-    button:hover { background: var(--primary-dark); }
-    button:disabled { opacity: 0.7; cursor: not-allowed; }
-    .result { white-space: pre-wrap; background: #f0f4f8; padding: 1rem; border-radius: 8px; margin-top: 1rem; min-height: 120px; }
-    .error { color: #c00; background: #ffe0e0; padding: 0.75rem; border-radius: 8px; margin-top: 1rem; }
-    .loading { opacity: 0.8; }
-    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .tabs button { width: auto; padding: 0.5rem 1rem; }
-    .tabs button.active { background: var(--primary-dark); }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .header {
+      text-align: center;
+      padding: 2.5rem 1rem 2rem;
+      background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .header h1 span { color: var(--primary); }
+    .header .tagline {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin: 0 0 0.25rem;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .header .hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      opacity: 0.9;
+    }
+
+    .container { max-width: 640px; margin: 0 auto; padding: 0 1.25rem 3rem; }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      transition: box-shadow 0.2s ease;
+    }
+    .card:hover { box-shadow: var(--shadow-lg); }
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.5rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.4rem;
+      color: var(--text);
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
+      font-family: inherit;
+      margin-bottom: 1.25rem;
+      background: var(--bg-card);
+      color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 0.8; }
+    textarea { min-height: 100px; resize: vertical; line-height: 1.5; }
+
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+    .network-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .network-tabs button {
+      flex: 1;
+      min-width: 0;
+      padding: 0.65rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .network-tabs button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+    .network-tabs button.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 0.9rem 1.5rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.05s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+    }
+    .btn-primary:active:not(:disabled) { transform: scale(0.99); }
+    .btn-primary:disabled {
+      opacity: 0.75;
+      cursor: not-allowed;
+    }
+    .btn-primary .spinner {
+      width: 1.1em;
+      height: 1.1em;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .btn-secondary {
+      padding: 0.6rem 1.25rem;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .btn-secondary:hover {
+      background: var(--border);
+      border-color: var(--text-muted);
+    }
+    .btn-secondary.copied {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    .result-wrap {
+      margin-top: 1rem;
+      padding: 1.25rem;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      min-height: 140px;
+    }
+    .result-wrap .result {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+    .result-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .error-box {
+      display: none;
+      color: var(--error-text);
+      background: var(--error-bg);
+      padding: 1rem 1.25rem;
+      border-radius: var(--radius-sm);
+      border: 1px solid #fecaca;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    .error-box.visible { display: block; animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .result-card {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    .result-card.visible { display: block; }
+    .result-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>ViralPost AI</h1>
-    <p>Générez des posts LinkedIn, Instagram et Facebook optimisés SEO</p>
-  </div>
-  <div class="container">
-    <div class="card">
-      <label>Sujet du post</label>
-      <textarea id="subject" placeholder="Ex: Les bienfaits du télétravail..." required></textarea>
+  <header class="header">
+    <h1>ViralPost <span>AI</span></h1>
+    <p class="tagline">Générez des posts LinkedIn, Instagram et Facebook optimisés SEO en un clic.</p>
+    <p class="hint">Service hébergé — aucune clé API demandée aux visiteurs.</p>
+  </header>
+
+  <main class="container">
+    <section class="card" aria-label="Formulaire de génération">
+      <p class="card-title">Nouveau post</p>
+      <label for="subject">Sujet du post</label>
+      <textarea id="subject" placeholder="Ex : Les bienfaits du télétravail, les tendances 2025..." rows="4"></textarea>
+
       <div class="row">
         <div>
-          <label>Ton</label>
+          <label for="tone">Ton</label>
           <select id="tone">
             <option value="professionnel">Professionnel</option>
             <option value="humoristique">Humoristique</option>
@@ -47,54 +280,116 @@
           </select>
         </div>
         <div>
-          <label>Audience cible</label>
-          <input type="text" id="audience" placeholder="Ex: Entrepreneurs, marketeurs..." required />
+          <label for="audience">Audience cible</label>
+          <input type="text" id="audience" placeholder="Ex : Entrepreneurs, étudiants..." required />
         </div>
       </div>
-      <label>Réseau</label>
-      <div class="tabs" id="network-tabs">
-        <button type="button" data-network="linkedin" class="active">LinkedIn</button>
-        <button type="button" data-network="instagram">Instagram</button>
-        <button type="button" data-network="facebook">Facebook</button>
+
+      <label id="network-label">Réseau social</label>
+      <div class="network-tabs" id="network-tabs" role="tablist" aria-labelledby="network-label">
+        <button type="button" role="tab" aria-selected="true" data-network="linkedin" class="active">LinkedIn</button>
+        <button type="button" role="tab" aria-selected="false" data-network="instagram" tabindex="-1">Instagram</button>
+        <button type="button" role="tab" aria-selected="false" data-network="facebook" tabindex="-1">Facebook</button>
       </div>
-      <label>Moteur IA</label>
+
+      <label for="engine">Moteur IA</label>
       <select id="engine">
         <option value="google">Google (Gemini)</option>
         <option value="mistral">Mistral AI</option>
       </select>
-      <button type="button" id="generate">Générer le post</button>
-    </div>
-    <div class="card" id="result-card" style="display: none;">
-      <label>Résultat</label>
-      <div class="result" id="result"></div>
-      <button type="button" id="copy" style="margin-top: 0.75rem;">Copier</button>
-    </div>
-    <div id="error" class="error" style="display: none;"></div>
-  </div>
+
+      <button type="button" id="generate" class="btn-primary" aria-busy="false">
+        <span class="btn-text">Générer le post</span>
+      </button>
+    </section>
+
+    <section class="card result-card" id="result-card" aria-live="polite">
+      <p class="card-title">Résultat</p>
+      <p class="result-meta" id="result-meta"></p>
+      <div class="result-wrap">
+        <div class="result" id="result"></div>
+      </div>
+      <div class="result-actions">
+        <button type="button" id="copy" class="btn-secondary" aria-label="Copier le texte">
+          <span class="copy-icon">📋</span>
+          <span class="copy-text">Copier</span>
+        </button>
+      </div>
+    </section>
+
+    <div id="error" class="error-box" role="alert"></div>
+  </main>
+
+  <footer>ViralPost AI — Génération de contenu pour les réseaux sociaux</footer>
+
   <script>
     const API = '/api/generate';
     let selectedNetwork = 'linkedin';
 
-    document.querySelectorAll('#network-tabs button').forEach(btn => {
+    const networkLabels = { linkedin: 'LinkedIn', instagram: 'Instagram', facebook: 'Facebook' };
+    const engineLabels = { google: 'Gemini', mistral: 'Mistral AI' };
+
+    // Tabs réseau
+    document.querySelectorAll('#network-tabs button').forEach((btn, i) => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('#network-tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#network-tabs button').forEach(b => {
+          b.classList.remove('active');
+          b.setAttribute('aria-selected', 'false');
+          b.setAttribute('tabindex', '-1');
+        });
         btn.classList.add('active');
+        btn.setAttribute('aria-selected', 'true');
+        btn.setAttribute('tabindex', '0');
         selectedNetwork = btn.dataset.network;
+      });
+      btn.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        const tabs = [...document.querySelectorAll('#network-tabs button')];
+        const idx = tabs.indexOf(e.target);
+        const next = e.key === 'ArrowRight' ? tabs[(idx + 1) % tabs.length] : tabs[(idx - 1 + tabs.length) % tabs.length];
+        next.focus();
+        next.click();
       });
     });
 
-    document.getElementById('generate').addEventListener('click', async () => {
+    const generateBtn = document.getElementById('generate');
+    const btnText = generateBtn.querySelector('.btn-text');
+    const resultCard = document.getElementById('result-card');
+    const resultMeta = document.getElementById('result-meta');
+    const resultEl = document.getElementById('result');
+    const copyBtn = document.getElementById('copy');
+    const copyTextEl = copyBtn.querySelector('.copy-text');
+    const errorEl = document.getElementById('error');
+
+    function setLoading(loading) {
+      generateBtn.disabled = loading;
+      generateBtn.setAttribute('aria-busy', loading);
+      if (loading) {
+        btnText.innerHTML = '<span class="spinner"></span> Génération en cours…';
+      } else {
+        btnText.textContent = 'Générer le post';
+      }
+    }
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.classList.add('visible');
+      resultCard.classList.remove('visible');
+    }
+    function hideError() {
+      errorEl.classList.remove('visible');
+    }
+
+    generateBtn.addEventListener('click', async () => {
       const subject = document.getElementById('subject').value.trim();
       const audience = document.getElementById('audience').value.trim();
       if (!subject || !audience) {
-        showError('Remplissez le sujet et l\'audience.');
+        showError('Remplissez le sujet et l’audience pour continuer.');
         return;
       }
-      const btn = document.getElementById('generate');
-      btn.disabled = true;
-      btn.classList.add('loading');
+      setLoading(true);
       hideError();
-      document.getElementById('result-card').style.display = 'none';
+      resultCard.classList.remove('visible');
 
       try {
         const res = await fetch(API, {
@@ -110,32 +405,38 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          showError(data.error || data.detail || 'Erreur ' + res.status);
+          const msg = [data.error, data.detail].filter(Boolean).join(' — ') || ('Erreur ' + res.status);
+          showError(msg);
           return;
         }
-        document.getElementById('result').textContent = data.content || '';
-        document.getElementById('result-card').style.display = 'block';
+        resultEl.textContent = data.content || '';
+        resultMeta.textContent = networkLabels[selectedNetwork] + ' · ' + engineLabels[document.getElementById('engine').value];
+        resultCard.classList.add('visible');
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (e) {
-        showError('Erreur réseau: ' + e.message);
+        showError('Erreur réseau. Vérifiez votre connexion et réessayez.');
       } finally {
-        btn.disabled = false;
-        btn.classList.remove('loading');
+        setLoading(false);
       }
     });
 
-    document.getElementById('copy').addEventListener('click', () => {
-      const text = document.getElementById('result').textContent;
-      navigator.clipboard.writeText(text).then(() => alert('Copié !')).catch(() => {});
+    copyBtn.addEventListener('click', () => {
+      const text = resultEl.textContent;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        copyTextEl.textContent = 'Copié !';
+        copyBtn.classList.add('copied');
+        copyBtn.querySelector('.copy-icon').textContent = '✓';
+        setTimeout(() => {
+          copyTextEl.textContent = 'Copier';
+          copyBtn.classList.remove('copied');
+          copyBtn.querySelector('.copy-icon').textContent = '📋';
+        }, 2000);
+      }).catch(() => {
+        copyTextEl.textContent = 'Échec';
+        setTimeout(() => { copyTextEl.textContent = 'Copier'; }, 1500);
+      });
     });
-
-    function showError(msg) {
-      const el = document.getElementById('error');
-      el.textContent = msg;
-      el.style.display = 'block';
-    }
-    function hideError() {
-      document.getElementById('error').style.display = 'none';
-    }
   </script>
 </body>
 </html>

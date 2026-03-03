@@ -9,8 +9,14 @@ SYSTEM_MESSAGE = (
     "TU DOIS TOUJOURS INTÉGRER DES EMOJIS dans tes posts - c'est OBLIGATOIRE."
 )
 
+def _norm_tone(ton):
+    t = (ton or "professionnel").lower().strip()
+    if t not in ("professionnel", "humoristique", "provocateur"):
+        return "professionnel"
+    return t
+
 def get_linkedin_prompt(sujet, ton, audience):
-    ton_fr = {"professionnel": "professionnel et sérieux", "humoristique": "humoristique et engageant", "provocateur": "provocateur et percutant"}[ton]
+    ton_fr = {"professionnel": "professionnel et sérieux", "humoristique": "humoristique et engageant", "provocateur": "provocateur et percutant"}[_norm_tone(ton)]
     return f"""Crée un post LinkedIn professionnel LONG et DÉTAILLÉ (minimum 250-300 mots) optimisé pour le SEO avec la structure AIDA.
 Sujet: {sujet}
 Ton: {ton_fr}
@@ -18,7 +24,7 @@ Audience cible: {audience}
 STRUCTURE: accroche forte, corps détaillé (AIDA), 5-8 hashtags à la fin. Utilise 8-12 emojis. RÉPONSE: le post complet uniquement, sans explications."""
 
 def get_instagram_prompt(sujet, ton, audience):
-    ton_fr = {"professionnel": "professionnel", "humoristique": "décontracté et humoristique", "provocateur": "audacieux et provocateur"}[ton]
+    ton_fr = {"professionnel": "professionnel", "humoristique": "décontracté et humoristique", "provocateur": "audacieux et provocateur"}[_norm_tone(ton)]
     return f"""Crée un post Instagram LONG (minimum 200-250 mots) captivant, visuel et optimisé SEO.
 Sujet: {sujet}
 Ton: {ton_fr}
@@ -26,7 +32,7 @@ Audience cible: {audience}
 Utilise 20-25 emojis, bloc de hashtags à la fin. RÉPONSE: le post complet uniquement."""
 
 def get_facebook_prompt(sujet, ton, audience):
-    ton_fr = {"professionnel": "amical et professionnel", "humoristique": "décontracté et humoristique", "provocateur": "audacieux et engageant"}[ton]
+    ton_fr = {"professionnel": "amical et professionnel", "humoristique": "décontracté et humoristique", "provocateur": "audacieux et engageant"}[_norm_tone(ton)]
     return f"""Crée un post Facebook LONG (minimum 200-250 mots) communautaire qui encourage l'interaction.
 Sujet: {sujet}
 Ton: {ton_fr}
@@ -105,29 +111,32 @@ class handler(BaseHTTPRequestHandler):
             send_json(self, 400, {"error": "Invalid JSON", "detail": str(e)})
             return
 
-        subject = data.get("subject", "")
-        tone = data.get("tone", "professionnel")
-        audience = data.get("audience", "")
-        network = data.get("network", "linkedin")
-        engine = data.get("engine", "google")
+        try:
+            subject = data.get("subject", "")
+            tone = data.get("tone", "professionnel")
+            audience = data.get("audience", "")
+            network = data.get("network", "linkedin")
+            engine = data.get("engine", "google")
 
-        api_key_google = data.get("api_key_google") or os.environ.get("GOOGLE_AI_API_KEY")
-        api_key_mistral = data.get("api_key_mistral") or os.environ.get("MISTRAL_API_KEY")
+            # Only use server-side keys (your Vercel env vars). Client never sends keys.
+            api_key_google = os.environ.get("GOOGLE_AI_API_KEY")
+            api_key_mistral = os.environ.get("MISTRAL_API_KEY")
 
-        if not subject or not audience:
-            send_json(self, 400, {"error": "subject et audience sont requis"})
-            return
+            if not subject or not audience:
+                send_json(self, 400, {"error": "subject et audience sont requis"})
+                return
 
-        if not api_key_google and not api_key_mistral:
-            send_json(self, 400, {"error": "Configurez GOOGLE_AI_API_KEY ou MISTRAL_API_KEY (Vercel) ou envoyez api_key_google / api_key_mistral dans le body."})
-            return
+            if not api_key_google and not api_key_mistral:
+                send_json(self, 503, {"error": "Service non configuré. L’administrateur doit définir GOOGLE_AI_API_KEY ou MISTRAL_API_KEY sur le serveur."})
+                return
 
-        prompt = build_prompt(network, subject, tone, audience)
-        content = generate_post(engine, prompt, api_key_google, api_key_mistral)
+            prompt = build_prompt(network, subject, tone, audience)
+            content = generate_post(engine, prompt, api_key_google, api_key_mistral)
 
-        if content is None:
-            send_json(self, 502, {"error": "Échec de la génération (vérifiez les clés API et les quotas)."})
-            return
+            if content is None:
+                send_json(self, 502, {"error": "Échec de la génération (vérifiez les clés API et les quotas)."})
+                return
 
-        send_json(self, 200, {"content": content})
-        return
+            send_json(self, 200, {"content": content})
+        except Exception as e:
+            send_json(self, 500, {"error": "Erreur serveur", "detail": str(e)})
