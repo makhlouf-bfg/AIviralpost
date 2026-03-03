@@ -13,7 +13,7 @@
 - [Installation](#-installation)
 - [Configuration](#-configuration)
 - [Utilisation](#-utilisation)
-- [Déploiement en ligne](#-déploiement-en-ligne)
+- [Déploiement en ligne](#-déploiement-en-ligne) (Streamlit Cloud, Vercel)
 - [Structure du projet](#-structure-du-projet)
 - [Technologies utilisées](#-technologies-utilisées)
 - [Moteurs IA supportés](#-moteurs-ia-supportés)
@@ -233,26 +233,40 @@ Pour mettre l'application en ligne (hébergement gratuit), le plus simple est d'
 - **[Hugging Face Spaces](https://huggingface.co/spaces)** : créer un Space de type **Streamlit**, connecter le repo GitHub.
 - **[Railway](https://railway.app)** ou **[Render](https://render.com)** : déployer depuis GitHub avec un fichier de configuration (ex. `Dockerfile` ou `render.yaml`) si vous souhaitez plus de contrôle.
 
+### Déploiement sur Vercel
+
+Une **version API + page web** est prête pour [Vercel](https://vercel.com) : `api/generate.py` (POST) + `public/index.html`.
+
+1. Importer le repo sur [vercel.com](https://vercel.com) (New Project → Import Git).
+2. Ajouter les variables d'environnement : `GOOGLE_AI_API_KEY`, `MISTRAL_API_KEY` (optionnel).
+3. Déployer. L’app sera à `https://votre-projet.vercel.app` (timeout 60 s en Pro, 10 s en gratuit).
+
 ## 📁 Structure du projet
 
 ```
 viralpost-ai/
 │
-├── app.py                 # Application principale Streamlit
+├── app.py                 # Application principale Streamlit (local / desktop)
 ├── launch_desktop.py      # Script de lancement mode desktop
 ├── launch_desktop.bat     # Script batch Windows
 ├── launch_desktop.sh      # Script shell Linux/Mac
+│
+├── api/
+│   └── generate.py       # API serverless (Vercel) : POST /api/generate
+├── public/
+│   └── index.html         # Interface web pour Vercel
+├── vercel.json            # Config Vercel (rewrites, timeout)
 │
 ├── requirements.txt       # Dépendances Python
 ├── env.example.txt        # Exemple de configuration (.env)
 ├── .streamlit/
 │   └── config.toml        # Config Streamlit (thème, serveur)
-├── .gitignore             # Fichiers ignorés par Git
+├── .gitignore              # Fichiers ignorés par Git
 │
-├── README.md              # Ce fichier
+├── README.md               # Ce fichier
 │
-├── viralpost_history.db  # Base de données SQLite (généré automatiquement)
-└── generated_images/     # Images générées (si applicable)
+├── viralpost_history.db   # Base de données SQLite (généré automatiquement)
+└── generated_images/      # Images générées (si applicable)
 ```
 
 ## 🛠️ Technologies utilisées

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ViralPost AI</title>
+  <style>
+    :root { --primary: #1DA1F2; --primary-dark: #0d8bd9; --bg: #f8f9fa; --card: #fff; --text: #262730; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .header { text-align: center; padding: 2rem 1rem; }
+    .header h1 { font-size: 2.5rem; color: var(--primary); margin: 0; }
+    .container { max-width: 720px; margin: 0 auto; padding: 0 1rem 2rem; }
+    .card { background: var(--card); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-left: 4px solid var(--primary); }
+    label { display: block; font-weight: 600; margin-bottom: 0.35rem; }
+    input, select, textarea { width: 100%; padding: 0.6rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; margin-bottom: 1rem; }
+    textarea { min-height: 80px; resize: vertical; }
+    button { background: var(--primary); color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 1rem; width: 100%; }
+    button:hover { background: var(--primary-dark); }
+    button:disabled { opacity: 0.7; cursor: not-allowed; }
+    .result { white-space: pre-wrap; background: #f0f4f8; padding: 1rem; border-radius: 8px; margin-top: 1rem; min-height: 120px; }
+    .error { color: #c00; background: #ffe0e0; padding: 0.75rem; border-radius: 8px; margin-top: 1rem; }
+    .loading { opacity: 0.8; }
+    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tabs button { width: auto; padding: 0.5rem 1rem; }
+    .tabs button.active { background: var(--primary-dark); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .row { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>ViralPost AI</h1>
+    <p>Générez des posts LinkedIn, Instagram et Facebook optimisés SEO</p>
+  </div>
+  <div class="container">
+    <div class="card">
+      <label>Sujet du post</label>
+      <textarea id="subject" placeholder="Ex: Les bienfaits du télétravail..." required></textarea>
+      <div class="row">
+        <div>
+          <label>Ton</label>
+          <select id="tone">
+            <option value="professionnel">Professionnel</option>
+            <option value="humoristique">Humoristique</option>
+            <option value="provocateur">Provocateur</option>
+          </select>
+        </div>
+        <div>
+          <label>Audience cible</label>
+          <input type="text" id="audience" placeholder="Ex: Entrepreneurs, marketeurs..." required />
+        </div>
+      </div>
+      <label>Réseau</label>
+      <div class="tabs" id="network-tabs">
+        <button type="button" data-network="linkedin" class="active">LinkedIn</button>
+        <button type="button" data-network="instagram">Instagram</button>
+        <button type="button" data-network="facebook">Facebook</button>
+      </div>
+      <label>Moteur IA</label>
+      <select id="engine">
+        <option value="google">Google (Gemini)</option>
+        <option value="mistral">Mistral AI</option>
+      </select>
+      <button type="button" id="generate">Générer le post</button>
+    </div>
+    <div class="card" id="result-card" style="display: none;">
+      <label>Résultat</label>
+      <div class="result" id="result"></div>
+      <button type="button" id="copy" style="margin-top: 0.75rem;">Copier</button>
+    </div>
+    <div id="error" class="error" style="display: none;"></div>
+  </div>
+  <script>
+    const API = '/api/generate';
+    let selectedNetwork = 'linkedin';
+
+    document.querySelectorAll('#network-tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#network-tabs button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedNetwork = btn.dataset.network;
+      });
+    });
+
+    document.getElementById('generate').addEventListener('click', async () => {
+      const subject = document.getElementById('subject').value.trim();
+      const audience = document.getElementById('audience').value.trim();
+      if (!subject || !audience) {
+        showError('Remplissez le sujet et l\'audience.');
+        return;
+      }
+      const btn = document.getElementById('generate');
+      btn.disabled = true;
+      btn.classList.add('loading');
+      hideError();
+      document.getElementById('result-card').style.display = 'none';
+
+      try {
+        const res = await fetch(API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject,
+            tone: document.getElementById('tone').value,
+            audience,
+            network: selectedNetwork,
+            engine: document.getElementById('engine').value
+          })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showError(data.error || data.detail || 'Erreur ' + res.status);
+          return;
+        }
+        document.getElementById('result').textContent = data.content || '';
+        document.getElementById('result-card').style.display = 'block';
+      } catch (e) {
+        showError('Erreur réseau: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
+      }
+    });
+
+    document.getElementById('copy').addEventListener('click', () => {
+      const text = document.getElementById('result').textContent;
+      navigator.clipboard.writeText(text).then(() => alert('Copié !')).catch(() => {});
+    });
+
+    function showError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+    function hideError() {
+      document.getElementById('error').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
