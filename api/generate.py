@@ -1,6 +1,7 @@
 # API Vercel : génération de posts (sans Streamlit)
 import json
 import os
+import re
 from http.server import BaseHTTPRequestHandler
 
 SYSTEM_MESSAGE = (
@@ -8,7 +9,9 @@ SYSTEM_MESSAGE = (
     "Tu crées des posts pour LinkedIn, Instagram et Facebook. "
     "RÈGLE ABSOLUE : tu dois respecter À LA LETTRE les instructions du client : "
     "nombre d'emojis (aucun / peu / beaucoup), consignes supplémentaires, ton, longueur. "
-    "Ne jamais ajouter d'emojis si le client demande aucun emoji. Ne jamais ignorer une consigne explicite."
+    "Ne jamais ajouter d'emojis si le client demande aucun emoji. Ne jamais ignorer une consigne explicite. "
+    "FORMAT DE RÉPONSE : texte brut uniquement. Interdit d'utiliser des astérisques (*), du markdown (**gras**), "
+    "des séparateurs décoratifs (***** ou -----), ou tout formatage. Uniquement du texte lisible et des emojis si demandé."
 )
 
 def _norm_tone(ton):
@@ -33,7 +36,7 @@ Ton: {ton_fr}
 Audience cible: {audience}
 STRUCTURE: accroche forte, corps détaillé (AIDA), 5-8 hashtags à la fin.
 {emoji_rule}
-RÉPONSE: le post complet uniquement, sans explications ni métatexte."""
+RÉPONSE: le post en TEXTE BRUT uniquement (pas d'astérisques *, pas de **gras**, pas de *****). Sans explications."""
     if custom_instructions:
         base += f"\n\nINSTRUCTIONS OBLIGATOIRES DU CLIENT (à respecter à la lettre):\n{custom_instructions}"
     return base
@@ -46,7 +49,7 @@ Ton: {ton_fr}
 Audience cible: {audience}
 Bloc de hashtags à la fin.
 {emoji_rule}
-RÉPONSE: le post complet uniquement."""
+RÉPONSE: le post en TEXTE BRUT uniquement (pas d'astérisques *, pas de **gras**, pas de *****)."""
     if custom_instructions:
         base += f"\n\nINSTRUCTIONS OBLIGATOIRES DU CLIENT (à respecter à la lettre):\n{custom_instructions}"
     return base
@@ -59,10 +62,25 @@ Ton: {ton_fr}
 Audience cible: {audience}
 Pose 3-4 questions à la fin pour encourager les commentaires.
 {emoji_rule}
-RÉPONSE: le post complet uniquement."""
+RÉPONSE: le post en TEXTE BRUT uniquement (pas d'astérisques *, pas de **gras**, pas de *****)."""
     if custom_instructions:
         base += f"\n\nINSTRUCTIONS OBLIGATOIRES DU CLIENT (à respecter à la lettre):\n{custom_instructions}"
     return base
+
+def _clean_output(text):
+    """Enlève astérisques et formatage type markdown du texte généré."""
+    if not text or not isinstance(text, str):
+        return text
+    # Supprimer les ** (markdown gras)
+    text = re.sub(r'\*\*', '', text)
+    # Supprimer les lignes faites uniquement de * ; - ou espaces (séparateurs décoratifs)
+    text = re.sub(r'\n\s*[*;\-]+\s*\n', '\n\n', text)
+    text = re.sub(r'^\s*[*;\-]+\s*$', '', text, flags=re.MULTILINE)
+    # Remplacer les * restants (listes markdown) par un tiret ou rien selon le contexte
+    text = re.sub(r'\n\s*\*\s+', '\n• ', text)
+    # Nettoyer les lignes vides en trop
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    return text.strip()
 
 def build_prompt(network, subject, tone, audience, emoji_level, custom_instructions):
     prompts = {
@@ -165,6 +183,7 @@ class handler(BaseHTTPRequestHandler):
                 send_json(self, 502, {"error": "Échec de la génération (vérifiez les clés API et les quotas)."})
                 return
 
+            content = _clean_output(content)
             send_json(self, 200, {"content": content})
         except Exception as e:
             send_json(self, 500, {"error": "Erreur serveur", "detail": str(e)})
