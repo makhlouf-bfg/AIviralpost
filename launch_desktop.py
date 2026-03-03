@@ -59,6 +59,7 @@ def start_streamlit():
     print("🚀 Démarrage de Streamlit...")
     
     # Démarrer Streamlit avec des paramètres optimisés pour pywebview
+    # Ne pas utiliser PIPE pour stdout/stderr sinon le processus peut bloquer quand le buffer est plein
     process = subprocess.Popen(
         [
             sys.executable,
@@ -72,8 +73,7 @@ def start_streamlit():
             "--browser.gatherUsageStats", "false",
             "--server.fileWatcherType", "none",  # Désactiver le file watcher pour éviter les problèmes
         ],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        cwd=str(app_path.parent),  # CWD = dossier du projet pour .env et DB
         creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
     )
     

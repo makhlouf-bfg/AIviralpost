@@ -29,8 +29,8 @@ env/
 ENV/
 .venv
 
-# Streamlit
-.streamlit/
+# Streamlit (conserver .streamlit/config.toml pour le déploiement)
+.streamlit/secrets.toml
 
 # IDE
 .vscode/

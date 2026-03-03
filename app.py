@@ -37,11 +37,20 @@ def check_password(password):
     # Vérifier le hash
     return hashlib.sha256(password.encode('utf-8')).hexdigest() == _PASS_HASH
 
-# Configuration Google AI Studio (Gemini) - Optionnel (chargé depuis .env)
-_GOOGLE_AI_API_KEY_ENV = os.getenv("GOOGLE_AI_API_KEY", None)
+# Configuration Google AI Studio (Gemini) et Mistral AI
+# Priorité : variables d'environnement (.env ou Streamlit Cloud Secrets injectés en env)
+# puis st.secrets (Streamlit Community Cloud)
+def _get_env_or_secret(key):
+    v = os.getenv(key)
+    if v:
+        return v
+    try:
+        return st.secrets.get(key)
+    except Exception:
+        return None
 
-# Configuration Mistral AI - Optionnel (chargé depuis .env)
-_MISTRAL_API_KEY_ENV = os.getenv("MISTRAL_API_KEY", None)
+_GOOGLE_AI_API_KEY_ENV = _get_env_or_secret("GOOGLE_AI_API_KEY")
+_MISTRAL_API_KEY_ENV = _get_env_or_secret("MISTRAL_API_KEY")
 
 # Configuration de la page
 st.set_page_config(
@@ -289,9 +298,9 @@ def get_available_gemini_model(genai):
 # Fonction pour obtenir les clés API (priorité aux clés utilisateur, puis .env si mot de passe OK)
 def get_api_keys():
     """Retourne les clés API en priorisant les clés de session_state (utilisateur), puis .env si protégé"""
-    # Clés de l'utilisateur (saisies dans l'interface)
-    user_mistral = st.session_state.get('user_mistral_api_key', '')
-    user_google = st.session_state.get('user_google_api_key', '')
+    # Clés de l'utilisateur (widgets ou sauvegardées)
+    user_mistral = st.session_state.get('input_mistral_key') or st.session_state.get('user_mistral_api_key') or ''
+    user_google = st.session_state.get('input_google_key') or st.session_state.get('user_google_api_key') or ''
     
     # Convertir chaînes vides en None
     user_mistral = user_mistral.strip() if user_mistral else None
@@ -352,9 +361,20 @@ def generate_post(prompt, modele, use_google_ai=False, use_mistral_ai=False):
             # Essayer de trouver un modèle disponible dynamiquement
             available_model = get_available_gemini_model(genai)
             
-            # Si aucun modèle trouvé, essayer une liste de modèles par défaut
+            # Si aucun modèle trouvé, essayer une liste de modèles modernes,
+            # puis des modèles plus anciens en secours. En cas d'erreur (quota,
+            # modèle indisponible, etc.), on passe automatiquement au suivant.
             model_names = [
-                available_model,  # Modèle trouvé dynamiquement (priorité)
+                # Modèle détecté dynamiquement (priorité)
+                available_model,
+                # Nouveaux modèles texte Gemini (gratuits selon le quota Google)
+                'gemini-3.1-pro-preview',
+                'gemini-3-pro-preview',
+                'gemini-3-flash-preview',
+                'gemini-3.1-flash-lite-preview',
+                'gemini-2.5-pro',
+                'gemini-2.5-flash',
+                # Anciens modèles en dernier recours
                 'gemini-1.5-flash',
                 'gemini-1.5-flash-002',
                 'gemini-1.5-pro',
@@ -512,12 +532,14 @@ def main():
         if google_key:
             engine_options.append("Google AI Studio (Gemini)")
         
-        # Déterminer l'index par défaut
+        # Déterminer l'index par défaut (toujours dans la plage valide)
         default_index = 0
-        if 'use_mistral_ai' in st.session_state and st.session_state.use_mistral_ai:
-            default_index = engine_options.index("Mistral AI (Gratuit)") if "Mistral AI (Gratuit)" in engine_options else 0
-        elif 'use_google_ai' in st.session_state and st.session_state.use_google_ai:
-            default_index = engine_options.index("Google AI Studio (Gemini)") if "Google AI Studio (Gemini)" in engine_options else 0
+        if 'use_mistral_ai' in st.session_state and st.session_state.use_mistral_ai and "Mistral AI (Gratuit)" in engine_options:
+            default_index = engine_options.index("Mistral AI (Gratuit)")
+        elif 'use_google_ai' in st.session_state and st.session_state.use_google_ai and "Google AI Studio (Gemini)" in engine_options:
+            default_index = engine_options.index("Google AI Studio (Gemini)")
+        default_index = min(default_index, len(engine_options) - 1)
+        default_index = max(0, default_index)
         
         engine_choice = st.radio(
             "Moteur IA",

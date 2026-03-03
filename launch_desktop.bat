@@ -1,5 +1,6 @@
 @echo off
 REM Script batch Windows pour lancer l'application desktop
+cd /d "%~dp0"
 echo ============================================
 echo ViralPost AI - Application Desktop
 echo ============================================

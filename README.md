@@ -13,6 +13,7 @@
 - [Installation](#-installation)
 - [Configuration](#-configuration)
 - [Utilisation](#-utilisation)
+- [Déploiement en ligne](#-déploiement-en-ligne)
 - [Structure du projet](#-structure-du-projet)
 - [Technologies utilisées](#-technologies-utilisées)
 - [Moteurs IA supportés](#-moteurs-ia-supportés)
@@ -185,6 +186,53 @@ python launch_desktop.py
 5. **Copiez ou régénérez** : Utilisez le bouton de copie ou régénérez pour créer des variantes
 6. **Consultez l'historique** : Cliquez sur "Voir l'historique" dans la barre latérale
 
+## 🌐 Déploiement en ligne
+
+Pour mettre l'application en ligne (hébergement gratuit), le plus simple est d'utiliser **Streamlit Community Cloud**.
+
+### Prérequis
+
+- Un compte [GitHub](https://github.com)
+- Le projet poussé sur un dépôt GitHub (public ou privé)
+- Au moins une clé API (Google AI Studio et/ou Mistral AI) pour utiliser l’IA en ligne (Ollama ne fonctionne pas sur le cloud)
+
+### Étapes (Streamlit Community Cloud)
+
+1. **Aller sur [share.streamlit.io](https://share.streamlit.io)** et se connecter avec GitHub.
+
+2. **Créer une app** : cliquer sur **"New app"** (ou "Create app").
+
+3. **Renseigner le dépôt** :
+   - **Repository** : `votre-username/viralpost-ai` (ou le nom de votre repo)
+   - **Branch** : `main` (ou `master`)
+   - **Main file path** : `app.py`
+
+4. **Configurer les secrets** (clés API) :
+   - Ouvrir **"Advanced settings"**
+   - Dans **"Secrets"**, coller le contenu au format TOML suivant (en remplaçant par vos vraies clés) :
+
+   ```toml
+   GOOGLE_AI_API_KEY = "votre_cle_google_ai_ici"
+   MISTRAL_API_KEY = "votre_cle_mistral_ai_ici"
+   ```
+
+   Les visiteurs pourront aussi saisir leurs propres clés dans l’interface (section « Clés API personnelles »).
+
+5. **Lancer le déploiement** : cliquer sur **"Deploy!"**.  
+   L’app sera disponible à une URL du type :  
+   `https://votre-app.streamlit.app`
+
+### Après le déploiement
+
+- **Mise à jour** : chaque push sur la branche configurée redéploie automatiquement l’app.
+- **Modifier les secrets** : dans [share.streamlit.io](https://share.streamlit.io) → votre app → **⋮** → **Settings** → **Secrets**.
+- **Note** : en ligne, seul **Mistral AI** et **Google AI Studio (Gemini)** sont utilisables ; **Ollama** n’est pas disponible sur le cloud. L’historique (SQLite) est réinitialisé à chaque redéploiement.
+
+### Autres options d’hébergement
+
+- **[Hugging Face Spaces](https://huggingface.co/spaces)** : créer un Space de type **Streamlit**, connecter le repo GitHub.
+- **[Railway](https://railway.app)** ou **[Render](https://render.com)** : déployer depuis GitHub avec un fichier de configuration (ex. `Dockerfile` ou `render.yaml`) si vous souhaitez plus de contrôle.
+
 ## 📁 Structure du projet
 
 ```
@@ -197,9 +245,11 @@ viralpost-ai/
 │
 ├── requirements.txt       # Dépendances Python
 ├── env.example.txt        # Exemple de configuration (.env)
-├── .gitignore            # Fichiers ignorés par Git
+├── .streamlit/
+│   └── config.toml        # Config Streamlit (thème, serveur)
+├── .gitignore             # Fichiers ignorés par Git
 │
-├── README.md             # Ce fichier
+├── README.md              # Ce fichier
 │
 ├── viralpost_history.db  # Base de données SQLite (généré automatiquement)
 └── generated_images/     # Images générées (si applicable)
