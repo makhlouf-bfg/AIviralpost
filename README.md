@@ -393,4 +393,4 @@ Pour toute question ou suggestion, n'hésitez pas à ouvrir une [issue](https://
 
 ---
 
-**Fait avec ❤️ pour faciliter la création de contenu sur les réseaux sociaux**
+**Fait avec ❤️ par moi meme pour faciliter la création de contenu sur les réseaux sociaux**
